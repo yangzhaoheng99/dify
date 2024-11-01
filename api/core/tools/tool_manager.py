@@ -6,15 +6,13 @@ from os import listdir, path
 from threading import Lock
 from typing import Any, Optional, Union
 
-from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
-from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter
+from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter, ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
@@ -25,7 +23,7 @@ from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
 from extensions.ext_database import db
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -82,9 +80,9 @@ class ToolManager:
 
         :return: the tool
         """
-        if provider_type == "builtin":
-            return cls.get_builtin_tool(provider_id, tool_name)
-        elif provider_type == "api":
+        # if provider_type == "builtin":
+        #     return cls.get_builtin_tool(provider_id, tool_name)
+        if provider_type in ["api", "builtin"]:
             if tenant_id is None:
                 raise ValueError("tenant id is required for api provider")
             api_provider, _ = cls.get_api_provider_controller(tenant_id, provider_id)
@@ -113,52 +111,7 @@ class ToolManager:
 
         :return: the tool
         """
-        if provider_type == "builtin":
-            builtin_tool = cls.get_builtin_tool(provider_id, tool_name)
-
-            # check if the builtin tool need credentials
-            provider_controller = cls.get_builtin_provider(provider_id)
-            if not provider_controller.need_credentials:
-                return builtin_tool.fork_tool_runtime(
-                    runtime={
-                        "tenant_id": tenant_id,
-                        "credentials": {},
-                        "invoke_from": invoke_from,
-                        "tool_invoke_from": tool_invoke_from,
-                    }
-                )
-
-            # get credentials
-            builtin_provider: BuiltinToolProvider = (
-                db.session.query(BuiltinToolProvider)
-                .filter(
-                    BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.provider == provider_id,
-                )
-                .first()
-            )
-
-            if builtin_provider is None:
-                raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
-
-            # decrypt the credentials
-            credentials = builtin_provider.credentials
-            controller = cls.get_builtin_provider(provider_id)
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
-
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
-
-            return builtin_tool.fork_tool_runtime(
-                runtime={
-                    "tenant_id": tenant_id,
-                    "credentials": decrypted_credentials,
-                    "runtime_parameters": {},
-                    "invoke_from": invoke_from,
-                    "tool_invoke_from": tool_invoke_from,
-                }
-            )
-
-        elif provider_type == "api":
+        if provider_type in ["api", "builtin"]:
             if tenant_id is None:
                 raise ValueError("tenant id is required for api provider")
 
@@ -429,41 +382,41 @@ class ToolManager:
         else:
             filters.append(typ)
 
-        if "builtin" in filters:
+        # if "builtin" in filters:
             # get builtin providers
-            builtin_providers = cls.list_builtin_providers()
+            # builtin_providers = cls.list_builtin_providers()
 
-            # get db builtin providers
-            db_builtin_providers: list[BuiltinToolProvider] = (
-                db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
-            )
+            # # get db builtin providers
+            # db_builtin_providers: list[BuiltinToolProvider] = (
+            #     db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
+            # )
 
-            find_db_builtin_provider = lambda provider: next(
-                (x for x in db_builtin_providers if x.provider == provider), None
-            )
+            # find_db_builtin_provider = lambda provider: next(
+            #     (x for x in db_builtin_providers if x.provider == provider), None
+            # )
 
-            # append builtin providers
-            for provider in builtin_providers:
-                # handle include, exclude
-                if is_filtered(
-                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
-                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
-                    data=provider,
-                    name_func=lambda x: x.identity.name,
-                ):
-                    continue
+            # # append builtin providers
+            # for provider in builtin_providers:
+            #     # handle include, exclude
+            #     if is_filtered(
+            #         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+            #         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+            #         data=provider,
+            #         name_func=lambda x: x.identity.name,
+            #     ):
+            #         continue
 
-                user_provider = ToolTransformService.builtin_provider_to_user_provider(
-                    provider_controller=provider,
-                    db_provider=find_db_builtin_provider(provider.identity.name),
-                    decrypt_credentials=False,
-                )
+            #     user_provider = ToolTransformService.builtin_provider_to_user_provider(
+            #         provider_controller=provider,
+            #         db_provider=find_db_builtin_provider(provider.identity.name),
+            #         decrypt_credentials=False,
+            #     )
 
-                result_providers[provider.identity.name] = user_provider
+            #     result_providers[provider.identity.name] = user_provider
 
         # get db api providers
 
-        if "api" in filters:
+        if "api" in filters or "builtin" in filters:
             db_api_providers: list[ApiToolProvider] = (
                 db.session.query(ApiToolProvider).filter(ApiToolProvider.tenant_id == tenant_id).all()
             )
@@ -483,6 +436,8 @@ class ToolManager:
                     decrypt_credentials=False,
                     labels=labels.get(api_provider_controller["controller"].provider_id, []),
                 )
+                if user_provider.name.startswith("【仅内网调用】") or user_provider.name.startswith("【含外网调用】"):
+                    user_provider.type = ToolProviderType.BUILT_IN
                 result_providers[f"api_provider.{user_provider.name}"] = user_provider
 
         if "workflow" in filters:
@@ -612,14 +567,14 @@ class ToolManager:
         """
         provider_type = provider_type
         provider_id = provider_id
-        if provider_type == "builtin":
-            return (
-                dify_config.CONSOLE_API_URL
-                + "/console/api/workspaces/current/tool-provider/builtin/"
-                + provider_id
-                + "/icon"
-            )
-        elif provider_type == "api":
+        # if provider_type == "builtin":
+        #     return (
+        #         dify_config.CONSOLE_API_URL
+        #         + "/console/api/workspaces/current/tool-provider/builtin/"
+        #         + provider_id
+        #         + "/icon"
+        #     )
+        if provider_type in ["api", "builtin"]:
             try:
                 provider: ApiToolProvider = (
                     db.session.query(ApiToolProvider)

@@ -11,7 +11,6 @@ import { getLanguage } from '@/i18n/language'
 import Confirm from '@/app/components/base/confirm'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -235,7 +234,7 @@ const ProviderDetail = ({
       </div>
       <div className='mt-2 min-h-[36px] text-gray-500 text-sm leading-[18px]'>{collection.description[language]}</div>
       <div className='flex gap-1 border-b-[0.5px] border-black/5'>
-        {(collection.type === CollectionType.builtIn) && needAuth && (
+        {/* {(collection.type === CollectionType.builtIn) && needAuth && (
           <Button
             variant={isAuthed ? 'secondary' : 'primary'}
             className={cn('shrink-0 my-3 w-full', isAuthed && 'bg-white')}
@@ -250,7 +249,7 @@ const ProviderDetail = ({
               {isAuthed ? t('tools.auth.authorized') : t('tools.auth.unauthorized')}
             </div>
           </Button>
-        )}
+        )} */}
         {collection.type === CollectionType.custom && !isDetailLoading && (
           <Button
             className={cn('shrink-0 my-3 w-full')}

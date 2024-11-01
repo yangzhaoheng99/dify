@@ -355,9 +355,9 @@ class AppService:
                 provider_type = tool.get("provider_type")
                 provider_id = tool.get("provider_id")
                 tool_name = tool.get("tool_name")
-                if provider_type == "builtin":
-                    meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
-                elif provider_type == "api":
+                # if provider_type == "builtin":
+                #     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
+                if provider_type in ["api", "builtin"]:
                     try:
                         provider: ApiToolProvider = (
                             db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()

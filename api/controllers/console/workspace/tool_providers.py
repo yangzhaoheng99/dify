@@ -50,12 +50,26 @@ class ToolBuiltinProviderListToolsApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         return jsonable_encoder(
-            BuiltinToolManageService.list_builtin_tool_provider_tools(
+            ApiToolManageService.list_api_tool_provider_tools(
                 user_id,
                 tenant_id,
                 provider,
             )
         )
+    # @setup_required
+    # @login_required
+    # @account_initialization_required
+    # def get(self, provider):
+    #     user_id = current_user.id
+    #     tenant_id = current_user.current_tenant_id
+
+    #     return jsonable_encoder(
+    #         BuiltinToolManageService.list_builtin_tool_provider_tools(
+    #             user_id,
+    #             tenant_id,
+    #             provider,
+    #         )
+    #     )
 
 
 class ToolBuiltinProviderDeleteApi(Resource):
@@ -496,16 +510,25 @@ class ToolBuiltinListApi(Resource):
     def get(self):
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
-
         return jsonable_encoder(
             [
                 provider.to_dict()
-                for provider in BuiltinToolManageService.list_builtin_tools(
+                for provider in ApiToolManageService.list_api_tools(
                     user_id,
                     tenant_id,
+                    type="builtin"
                 )
             ]
         )
+        # return jsonable_encoder(
+        #     [
+        #         provider.to_dict()
+        #         for provider in BuiltinToolManageService.list_builtin_tools(
+        #             user_id,
+        #             tenant_id,
+        #         )
+        #     ]
+        # )
 
 
 class ToolApiListApi(Resource):
@@ -522,6 +545,7 @@ class ToolApiListApi(Resource):
                 for provider in ApiToolManageService.list_api_tools(
                     user_id,
                     tenant_id,
+                    type="api"
                 )
             ]
         )

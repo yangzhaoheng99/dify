@@ -31,9 +31,10 @@ class ToolTransformService:
         """
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/"
 
-        if provider_type == ToolProviderType.BUILT_IN.value:
-            return url_prefix + "builtin/" + provider_name + "/icon"
-        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
+        # if provider_type == ToolProviderType.BUILT_IN.value:
+        #     return url_prefix + "builtin/" + provider_name + "/icon"
+        if provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value, 
+                             ToolProviderType.BUILT_IN.value}:
             try:
                 return json.loads(icon)
             except:

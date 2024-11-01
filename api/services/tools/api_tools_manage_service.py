@@ -13,6 +13,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderSchemaType,
     ToolCredentialsOption,
     ToolProviderCredentials,
+    ToolProviderType,
 )
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -425,7 +426,7 @@ class ApiToolManageService:
         return {"result": result or "empty response"}
 
     @staticmethod
-    def list_api_tools(user_id: str, tenant_id: str) -> list[UserToolProvider]:
+    def list_api_tools(user_id: str, tenant_id: str, type: str = "api") -> list[UserToolProvider]:
         """
         list api tools
         """
@@ -456,7 +457,13 @@ class ApiToolManageService:
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels
                     )
                 )
-
-            result.append(user_provider)
+            # builtin tools
+            if user_provider.name.startswith("【仅内网调用】") or user_provider.name.startswith("【含外网调用】"):
+                if type == "builtin":
+                    user_provider.type = ToolProviderType.BUILT_IN
+                    result.append(user_provider)
+            else:
+                if type == "api":
+                    result.append(user_provider)
 
         return result
