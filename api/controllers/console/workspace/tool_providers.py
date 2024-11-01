@@ -14,6 +14,7 @@ from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.publice_tools_manage_service import PublicToolManageService
 from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
@@ -31,13 +32,12 @@ class ToolProviderListApi(Resource):
         req.add_argument(
             "type",
             type=str,
-            choices=["builtin", "model", "api", "workflow"],
+            choices=["builtin", "model", "api", "workflow", "public"],
             required=False,
             nullable=True,
             location="args",
         )
         args = req.parse_args()
-
         return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get("type", None))
 
 
@@ -121,6 +121,111 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
+
+
+class ToolPublicProviderAddApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("schema_type", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("schema", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("labels", type=list[str], required=False, nullable=True, location="json", default=[])
+        parser.add_argument("custom_disclaimer", type=str, required=False, nullable=True, location="json")
+
+        args = parser.parse_args()
+
+        return PublicToolManageService.create_api_tool_provider(
+            user_id,
+            tenant_id,
+            args["provider"],
+            args["icon"],
+            args["credentials"],
+            args["schema_type"],
+            args["schema"],
+            args.get("privacy_policy", ""),
+            args.get("custom_disclaimer", ""),
+            args.get("labels", []),
+        )
+
+
+class ToolPublicProviderListToolsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        # parser = reqparse.RequestParser()
+
+        # parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+
+        # args = parser.parse_args()
+
+        return jsonable_encoder(
+            PublicToolManageService.list_api_tool_provider_tools(
+                user_id,
+                tenant_id,
+                provider,
+            )
+        )
+    
+
+class ToolPublicProviderGetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+
+        args = parser.parse_args()
+
+        return PublicToolManageService.get_api_tool_provider(
+            user_id,
+            tenant_id,
+            args["provider"],
+        )
+    
+
+class ToolPublicProviderDeleteApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+
+        args = parser.parse_args()
+
+        return PublicToolManageService.delete_api_tool_provider(
+            user_id,
+            tenant_id,
+            args["provider"],
+        )
 
 
 class ToolApiProviderAddApi(Resource):
@@ -508,6 +613,25 @@ class ToolBuiltinListApi(Resource):
         )
 
 
+class ToolPublicListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        return jsonable_encoder(
+            [
+                provider.to_dict()
+                for provider in PublicToolManageService.list_api_tools(
+                    user_id,
+                    tenant_id,
+                )
+            ]
+        )
+    
+
 class ToolApiListApi(Resource):
     @setup_required
     @login_required
@@ -558,7 +682,7 @@ class ToolLabelsApi(Resource):
 api.add_resource(ToolProviderListApi, "/workspaces/current/tool-providers")
 
 # builtin tool provider
-api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<provider>/tools")
+# api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<provider>/tools")
 api.add_resource(ToolBuiltinProviderDeleteApi, "/workspaces/current/tool-provider/builtin/<provider>/delete")
 api.add_resource(ToolBuiltinProviderUpdateApi, "/workspaces/current/tool-provider/builtin/<provider>/update")
 api.add_resource(
@@ -568,6 +692,17 @@ api.add_resource(
     ToolBuiltinProviderCredentialsSchemaApi, "/workspaces/current/tool-provider/builtin/<provider>/credentials_schema"
 )
 api.add_resource(ToolBuiltinProviderIconApi, "/workspaces/current/tool-provider/builtin/<provider>/icon")
+
+
+# public tool provider
+# 新增工具
+api.add_resource(ToolPublicProviderAddApi, "/workspaces/current/tool-provider/public/add")
+# 获取工具列表
+api.add_resource(ToolPublicProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<provider>/tools")
+# 获取工具信息
+api.add_resource(ToolPublicProviderGetApi, "/workspaces/current/tool-provider/public/get")
+# 删除工具
+api.add_resource(ToolPublicProviderDeleteApi, "/workspaces/current/tool-provider/public/delete")
 
 # api tool provider
 api.add_resource(ToolApiProviderAddApi, "/workspaces/current/tool-provider/api/add")
@@ -586,7 +721,8 @@ api.add_resource(ToolWorkflowProviderDeleteApi, "/workspaces/current/tool-provid
 api.add_resource(ToolWorkflowProviderGetApi, "/workspaces/current/tool-provider/workflow/get")
 api.add_resource(ToolWorkflowProviderListToolApi, "/workspaces/current/tool-provider/workflow/tools")
 
-api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
+api.add_resource(ToolPublicListApi, "/workspaces/current/tools/builtin")
+# api.add_resource(ToolPublicListApi, "/workspaces/current/tools/public")
 api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
 api.add_resource(ToolWorkflowListApi, "/workspaces/current/tools/workflow")
 

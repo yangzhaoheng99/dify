@@ -32,6 +32,7 @@ class ToolProviderType(Enum):
 
     BUILT_IN = "builtin"
     WORKFLOW = "workflow"
+    PUBLIC = "public"
     API = "api"
     APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"

@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Optional, Union
 
-from configs import dify_config
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -14,11 +13,12 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.public_tool_provider import PublicToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.configuration import ToolConfigurationManager
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, PublicToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +29,12 @@ class ToolTransformService:
         """
         get tool provider icon url
         """
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/"
+        # url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/"
 
-        if provider_type == ToolProviderType.BUILT_IN.value:
-            return url_prefix + "builtin/" + provider_name + "/icon"
-        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
+        # if provider_type == ToolProviderType.BUILT_IN.value:
+        #     return url_prefix + "builtin/" + provider_name + "/icon"
+        if provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value, 
+                               ToolProviderType.BUILT_IN.value}:
             try:
                 return json.loads(icon)
             except:
@@ -134,6 +135,23 @@ class ToolTransformService:
         )
 
         return controller
+    
+    @staticmethod
+    def public_provider_to_controller(
+        db_provider: PublicToolProvider,
+    ) -> PublicToolProviderController:
+        """
+        convert provider controller to user provider
+        """
+        # package tool provider controller
+        controller = PublicToolProviderController.from_db(
+            db_provider=db_provider,
+            auth_type=ApiProviderAuthType.API_KEY
+            if db_provider.credentials["auth_type"] == "api_key"
+            else ApiProviderAuthType.NONE,
+        )
+
+        return controller
 
     @staticmethod
     def workflow_provider_to_controller(db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
@@ -200,6 +218,57 @@ class ToolTransformService:
                 zh_Hans=db_provider.name,
             ),
             type=ToolProviderType.API,
+            masked_credentials={},
+            is_team_authorization=True,
+            tools=[],
+            labels=labels or [],
+        )
+
+        if decrypt_credentials:
+            # init tool configuration
+            tool_configuration = ToolConfigurationManager(
+                tenant_id=db_provider.tenant_id, provider_controller=provider_controller
+            )
+
+            # decrypt the credentials and mask the credentials
+            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
+            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
+
+            result.masked_credentials = masked_credentials
+
+        return result
+    
+    @staticmethod
+    def public_provider_to_user_provider(
+        provider_controller: ApiToolProviderController,
+        db_provider: ApiToolProvider,
+        decrypt_credentials: bool = True,
+        labels: Optional[list[str]] = None,
+    ) -> UserToolProvider:
+        """
+        convert provider controller to user provider
+        """
+        username = "Anonymous"
+        try:
+            username = db_provider.user.name
+        except Exception as e:
+            logger.error(f"failed to get user name for api provider {db_provider.id}: {str(e)}")
+        # add provider into providers
+        credentials = db_provider.credentials
+        result = UserToolProvider(
+            id=db_provider.id,
+            author=username,
+            name=db_provider.name,
+            description=I18nObject(
+                en_US=db_provider.description,
+                zh_Hans=db_provider.description,
+            ),
+            icon=db_provider.icon,
+            label=I18nObject(
+                en_US=db_provider.name,
+                zh_Hans=db_provider.name,
+            ),
+            type=ToolProviderType.BUILT_IN,
             masked_credentials={},
             is_team_authorization=True,
             tools=[],
