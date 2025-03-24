@@ -1,6 +1,7 @@
 import datetime
 import hashlib
 import uuid
+import requests
 from typing import Literal, Union
 
 from flask_login import current_user
@@ -31,6 +32,30 @@ class FileService:
     def upload_file(
         file: FileStorage, user: Union[Account, EndUser], source: Literal["datasets"] | None = None
     ) -> UploadFile:
+        # 准备上传URL和参数
+        upload_url = "http://localhost:12006/upload/"
+        params = {"base_folder": "test"}
+
+        # 准备文件数据
+        files = {
+            'file': (
+                file.filename,
+                file.read(),
+                file.mimetype
+            )
+        }
+
+        
+        response = requests.post(
+            upload_url,
+            params=params,
+            files=files
+        )
+        if response.status_code != 200:
+            raise Exception(f"Upload failed with status {response.status_code}")
+        result = response.json()
+        
+
         # get file name
         filename = file.filename
         if not filename:
