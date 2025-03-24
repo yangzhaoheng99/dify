@@ -16,10 +16,10 @@ from core.tools.entities.api_entities import ToolProviderType, UserToolProvider,
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.provider.public_tool_provider import PublicToolProviderController
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.public_tool_provider import PublicToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool

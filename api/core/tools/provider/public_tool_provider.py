@@ -1,5 +1,4 @@
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolCredentialsOption,

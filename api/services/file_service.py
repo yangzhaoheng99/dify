@@ -1,9 +1,9 @@
 import datetime
 import hashlib
 import uuid
-import requests
 from typing import Literal, Union
 
+import requests
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
@@ -45,7 +45,6 @@ class FileService:
             )
         }
 
-        
         response = requests.post(
             upload_url,
             params=params,
@@ -55,7 +54,6 @@ class FileService:
             raise Exception(f"Upload failed with status {response.status_code}")
         result = response.json()
         
-
         # get file name
         filename = file.filename
         if not filename:
